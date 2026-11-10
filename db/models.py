@@ -26,7 +26,7 @@ class Stock(Base):
     dart_corp_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
     sector: Mapped[str | None] = mapped_column(String(100), nullable=True)
     source: Mapped[str] = mapped_column(String(40), default="")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class PriceDaily(Base):
@@ -41,7 +41,7 @@ class PriceDaily(Base):
     value: Mapped[float | None] = mapped_column(Float)  # 거래대금
     market_cap: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(40), default="")
-    collected_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    collected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class IndexDaily(Base):
@@ -52,7 +52,7 @@ class IndexDaily(Base):
     close: Mapped[float] = mapped_column(Float)
     change_pct: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(40), default="")
-    collected_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    collected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class Financial(Base):
@@ -65,7 +65,7 @@ class Financial(Base):
     total_liabilities: Mapped[float | None] = mapped_column(Float)
     total_equity: Mapped[float | None] = mapped_column(Float)
     source: Mapped[str] = mapped_column(String(40), default="")
-    collected_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    collected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class Disclosure(Base):
@@ -77,7 +77,7 @@ class Disclosure(Base):
     filed_day: Mapped[date] = mapped_column(Date, index=True)
     url: Mapped[str] = mapped_column(String(300))
     source: Mapped[str] = mapped_column(String(40), default="DART")
-    collected_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    collected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class News(Base):
@@ -91,7 +91,7 @@ class News(Base):
     query: Mapped[str | None] = mapped_column(String(100))
     issue_key: Mapped[str | None] = mapped_column(String(64), index=True)  # 중복 기사 묶음
     source: Mapped[str] = mapped_column(String(40), default="GoogleNewsRSS")
-    collected_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    collected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class NewsStock(Base):
@@ -195,7 +195,7 @@ class JobRun(Base):
     __tablename__ = "job_runs"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     job: Mapped[str] = mapped_column(String(40))
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     ok: Mapped[bool] = mapped_column(Boolean, default=False)
     rows: Mapped[int] = mapped_column(Integer, default=0)
@@ -214,7 +214,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(200), unique=True)
     tier: Mapped[str] = mapped_column(String(10), default="beta")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class Watchlist(Base):
@@ -230,7 +230,7 @@ class UsageEvent(Base):
     event: Mapped[str] = mapped_column(String(40))
     feature_id: Mapped[str | None] = mapped_column(String(40))
     path: Mapped[str | None] = mapped_column(String(300))
-    at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
 class Feedback(Base):
@@ -240,4 +240,4 @@ class Feedback(Base):
     page: Mapped[str] = mapped_column(String(300))
     rating: Mapped[int | None] = mapped_column(Integer)
     comment: Mapped[str] = mapped_column(Text)
-    at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

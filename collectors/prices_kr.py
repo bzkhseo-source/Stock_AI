@@ -80,14 +80,17 @@ def collect_snapshot(day: date) -> int:
     if ohlcv is None or ohlcv.empty or "종가" not in ohlcv or ohlcv["종가"].sum() == 0:
         return 0  # 휴장일
     try:
-        cap = stock.get_market_cap(ds, market="ALL")
+        cap = None if "시가총액" in ohlcv.columns else stock.get_market_cap(ds, market="ALL")
     except Exception as e:
         cap = None
         log.warning("시가총액 조회 실패(%s): %s", ds, e)
-    if cap is None or cap.empty or "시가총액" not in cap:
-        log.warning("시가총액이 비어 있습니다. .env의 KRX_ID/KRX_PW(KRX 정보데이터시스템 계정)를 확인하세요.")
-        cap = pd.DataFrame(columns=["시가총액"])
-    df = ohlcv.join(cap[["시가총액"]], how="left")
+    if "시가총액" in ohlcv.columns:  # pykrx 버전에 따라 시세에 시가총액이 이미 들어 있음
+        df = ohlcv
+    else:
+        if cap is None or cap.empty or "시가총액" not in cap:
+            log.warning("시가총액이 비어 있습니다. .env의 KRX_ID/KRX_PW(KRX 정보데이터시스템 계정)를 확인하세요.")
+            cap = pd.DataFrame(columns=["시가총액"])
+        df = ohlcv.join(cap[["시가총액"]], how="left")
     rows = []
     for code, r in df.iterrows():
         if not r.get("종가"):

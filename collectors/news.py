@@ -114,8 +114,11 @@ def collect_news(queries: list[str]) -> int:
                 existing = set(s.scalars(select(News.url).where(News.url.in_([i["url"] for i in items]))))
                 new_rows = []
                 for it in items:
-                    if it["url"] in existing or not it["url"]:
+                    if it["url"] in existing or not it["url"] or len(it["url"]) > 600:
                         continue
+                    it["title"] = it["title"][:400]
+                    it["publisher"] = (it["publisher"] or "")[:100] or None
+                    it["query"] = (it["query"] or "")[:100]
                     row = News(**it)
                     s.add(row)
                     new_rows.append(row)
