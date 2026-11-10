@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% block title %}{{ data.theme.name }}{% endblock %}
+{% block content %}
+{% set t = data.theme %}
+<div class="mb-4">
+  <p class="text-xs text-slate-500"><a href="/" class="hover:underline">홈</a> › 테마</p>
+  <h1 class="flex flex-wrap items-center gap-2 text-xl font-bold">{{ t.name }} {{ ui.trend_badge(t.trend) }}</h1>
+  <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+    {% for label, val, cls in [('1일 (중앙값)', t.ret_1d|pct, t.ret_1d|updown), ('5일 (중앙값)', t.ret_5d|pct, t.ret_5d|updown),
+                               ('거래대금 20일 평균 대비', t.value_change|ratio, ''), ('최근 7일 뉴스', (t.news_7d ~ '건') if t.news_7d is not none else NA, '')] %}
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+      <p class="text-xs text-slate-500">{{ label }}</p><p class="num text-base font-semibold {{ cls }}">{{ val }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="mt-2 text-xs text-slate-500">키워드: {{ (t.keywords + t.synonyms)|join(', ') }} · 트렌드 판정 기준은 <a href="/about#trend" class="underline">기준·정보</a>에서 볼 수 있습니다.</p>
+</div>
+{% if t.trend == '과열 주의' %}
+<p class="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">⚠ 단기간 급등과 거래 집중이 나타난 테마입니다. 추격매수 위험에 주의하세요.</p>
+{% endif %}
+{% include "partials/stock_table.html" %}
+{% endblock %}

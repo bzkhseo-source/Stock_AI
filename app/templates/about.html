@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}기준·정보{% endblock %}
+{% block content %}
+<h1 class="mb-1 text-xl font-bold">분석 기준과 데이터 정보</h1>
+<p class="mb-6 text-sm text-slate-600">모든 수치의 계산 방법과 출처를 공개합니다. 기준값은 베타 기간에 조정될 수 있습니다.</p>
+
+<section class="mb-8">
+  <h2 class="mb-2 text-base font-bold">AI 종합점수 (100점)</h2>
+  <p class="mb-2 text-sm text-slate-600">수익률이나 상승 확률이 아닌 <strong>트렌드 적합도</strong>입니다. 80점 이상 높음 · 65~79 양호 · 50~64 관찰 필요 · 50 미만 낮음. 데이터가 없는 항목은 만점 처리하지 않고, 평가 가능한 항목만으로 100점 환산합니다. 데이터 충족률이 60% 미만이면 평가 불가로 표시합니다.</p>
+  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-left text-xs text-slate-500"><tr><th class="px-3 py-2">항목</th><th class="px-3 py-2 text-right">배점</th><th class="px-3 py-2">산출 방법</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for k, label in labels.items() %}<tr><td class="px-3 py-2 font-medium">{{ label }}</td><td class="num px-3 py-2 text-right">{{ weights[k] }}</td><td class="px-3 py-2 text-slate-600">{{ methods[k] }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="trend" class="mb-8">
+  <h2 class="mb-2 text-base font-bold">테마 트렌드 분류</h2>
+  <p class="mb-2 text-sm text-slate-600">테마 구성 종목의 등락률 중앙값, 거래대금 합계(20일 평균 대비), 최근 7일 뉴스 건수로 위에서부터 순서대로 판정합니다.</p>
+  <ul class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white text-sm">
+    {% for name, rule in trend_rules %}<li class="flex gap-3 px-3 py-2"><span class="w-20 shrink-0 font-semibold">{{ name }}</span><span class="text-slate-600">{{ rule }}</span></li>{% endfor %}
+  </ul>
+</section>
+
+<section class="mb-8">
+  <h2 class="mb-2 text-base font-bold">종목 연관성과 테마 노출도</h2>
+  <ul class="space-y-1 text-sm text-slate-700">
+    <li><strong>직접 관련주</strong>: 테마 제품·서비스를 직접 개발·생산·판매 (노출도 30% 이상)</li>
+    <li><strong>핵심 수혜주</strong>: 직접 사업이지만 노출도 10~30%</li>
+    <li><strong>공급망 관련주</strong>: 부품·소재·장비 공급</li>
+    <li><strong>간접 관련주</strong>: 간접 영향 또는 노출도 10% 미만</li>
+    <li><strong>테마 편입주</strong>: 뉴스에 함께 등장했지만 사업 연관성이 검증되지 않음</li>
+  </ul>
+  <p class="mt-2 text-sm text-slate-600">테마 노출도는 DART 사업보고서 ‘사업의 내용’에서 테마 관련 부문 매출 ÷ 총매출로 계산합니다. AI가 근거 문장을 고르면 원문에 실제로 있는지 대조하고, 비중은 코드가 직접 계산합니다. 부문 구분이 없거나 검증에 실패하면 ‘산출 불가’로 표시합니다.</p>
+</section>
+
+<section class="mb-8">
+  <h2 class="mb-2 text-base font-bold">리스크 배지</h2>
+  <ul class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white text-sm">
+    {% for k, v in risk_help.items() %}<li class="flex gap-3 px-3 py-2"><span class="w-32 shrink-0 font-semibold text-rose-700">⚠ {{ k }}</span><span class="text-slate-600">{{ v }}</span></li>{% endfor %}
+  </ul>
+</section>
+
+<section class="mb-8">
+  <h2 class="mb-2 text-base font-bold">데이터 출처</h2>
+  <ul class="space-y-1 text-sm text-slate-700">
+    <li>국내 시세·시가총액: pykrx (KRX 정보데이터시스템), 종목 목록·지수: FinanceDataReader</li>
+    <li>해외 지수: yfinance (현지 거래일 기준)</li>
+    <li>공시·재무·사업보고서: OpenDART (금융감독원)</li>
+    <li>뉴스: Google 뉴스 RSS — 제목·언론사·게시일·링크만 저장</li>
+    <li>모든 시세는 장 마감 후 배치로 수집한 <strong>지연 데이터</strong>입니다.</li>
+  </ul>
+</section>
+
+<section class="mb-8">
+  <h2 class="mb-2 text-base font-bold">베타 기능 안내</h2>
+  <p class="text-sm text-slate-600">베타 기간에는 모든 기능을 무료로 제공합니다. <span class="rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white">PRO</span> 표시는 정식 출시 후 프로 등급이 될 수 있는 기능입니다. 현재 등급: <strong>{{ tier }}</strong></p>
+</section>
+
+<section>
+  <h2 class="mb-2 text-base font-bold">최근 수집·분석 작업</h2>
+  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-left text-xs text-slate-500"><tr><th class="px-3 py-2">작업</th><th class="px-3 py-2">시작</th><th class="px-3 py-2">결과</th><th class="px-3 py-2 text-right">행 수</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for r in runs %}<tr><td class="px-3 py-2">{{ r.job }}</td><td class="num px-3 py-2 text-slate-500">{{ r.started_at.strftime('%m/%d %H:%M') }}</td>
+          <td class="px-3 py-2">{% if r.ok %}<span class="text-emerald-700">성공</span>{% else %}<span class="text-rose-700" title="{{ r.message or '' }}">실패</span>{% endif %}</td>
+          <td class="num px-3 py-2 text-right">{{ r.rows }}</td></tr>
+        {% else %}<tr><td colspan="4" class="px-3 py-4 text-slate-500">실행 기록 없음 (데모 데이터는 기록하지 않음)</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,72 @@
+# 테마 사전 (AI 초안 — 서경환 님 검토 필요)
+# keywords: 테마를 대표하는 핵심 단어 (뉴스 검색어로도 사용)
+# synonyms: 검색어 확장용 유사어·연관어
+# 종목 연결은 이 파일에 적지 않는다. 사업보고서 검증(노출도) 또는 data/theme_members_manual.csv 로 관리한다.
+- id: ai
+  name: AI 및 인공지능
+  keywords: [인공지능, AI]
+  synonyms: [생성형 AI, LLM, 거대언어모델, AI 에이전트, 온디바이스 AI, 머신러닝, 딥러닝, AI 소프트웨어]
+- id: semiconductor
+  name: 반도체 및 HBM
+  keywords: [반도체, HBM]
+  synonyms: [고대역폭메모리, D램, 낸드, 파운드리, 반도체 장비, 반도체 소재, 후공정, 패키징, TC 본더, CXL, AI 반도체, GPU, NPU]
+- id: robot
+  name: 로봇 및 자동화
+  keywords: [로봇, 휴머노이드]
+  synonyms: [협동로봇, 산업용 로봇, 서비스 로봇, 감속기, 액추에이터, 스마트팩토리, 물류 자동화, 피지컬 AI]
+- id: defense
+  name: 방산 및 항공우주
+  keywords: [방산, 방위산업]
+  synonyms: [K방산, 무기 수출, 자주포, 전차, 미사일, 전투기, 탄약, 방산 수주]
+- id: bio
+  name: 바이오 및 제약
+  keywords: [바이오, 제약]
+  synonyms: [신약, 임상, 기술이전, 바이오시밀러, CDMO, 항체, ADC, 비만치료제, GLP-1, 유전자치료]
+- id: medtech
+  name: 의료기기 및 헬스케어
+  keywords: [의료기기, 헬스케어]
+  synonyms: [디지털헬스, 원격의료, 의료 AI, 미용 의료기기, 진단기기, 체외진단, 임플란트, 웨어러블 헬스]
+- id: battery
+  name: 2차전지 및 전기차
+  keywords: [2차전지, 전기차]
+  synonyms: [배터리, 양극재, 음극재, 전해질, 분리막, 리튬, 전고체, ESS, LFP, 배터리 재활용]
+- id: power
+  name: 전력 인프라 및 에너지
+  keywords: [전력, 전력기기]
+  synonyms: [변압기, 전선, 송배전, 전력망, 차단기, 배전반, 전력 수요, 그리드]
+- id: nuclear
+  name: 원자력 및 SMR
+  keywords: [원전, SMR]
+  synonyms: [원자력, 소형모듈원전, 원전 수출, 원전 기자재, 핵융합, 사용후핵연료]
+- id: datacenter
+  name: 데이터센터 및 클라우드
+  keywords: [데이터센터, 클라우드]
+  synonyms: [AI 데이터센터, 하이퍼스케일, 서버, 액침냉각, 데이터센터 냉각, 광통신, 광트랜시버, 네트워크 장비, 전력 반도체]
+- id: mobility
+  name: 자율주행 및 모빌리티
+  keywords: [자율주행, 모빌리티]
+  synonyms: [라이다, ADAS, 차량용 반도체, 전장, 로보택시, UAM, 도심항공모빌리티]
+- id: space
+  name: 우주항공 및 위성
+  keywords: [우주항공, 위성]
+  synonyms: [발사체, 저궤도 위성, 위성통신, 누리호, 우주항공청, 위성 영상]
+- id: shipbuilding
+  name: 조선 및 해운
+  keywords: [조선, 해운]
+  synonyms: [LNG선, 컨테이너선, 수주 잔고, 친환경 선박, 암모니아 추진선, 선박 수리, MRO, 해운 운임]
+- id: construction
+  name: 건설 및 부동산
+  keywords: [건설, 부동산]
+  synonyms: [주택 공급, 재건축, 해외 건설, 플랜트, 리츠, 인프라 투자]
+- id: finance
+  name: 금융 및 핀테크
+  keywords: [금융, 핀테크]
+  synonyms: [밸류업, 주주환원, 배당, 은행, 증권, 보험, 스테이블코인, 간편결제, 토큰증권]
+- id: consumer
+  name: 소비재 및 엔터테인먼트
+  keywords: [K뷰티, 엔터]
+  synonyms: [화장품, K푸드, 라면, 음식료, K팝, 콘텐츠, 웹툰, 게임, 면세점, 관광]
+- id: green
+  name: 친환경 및 탄소중립
+  keywords: [탄소중립, 친환경]
+  synonyms: [수소, 연료전지, 태양광, 풍력, 해상풍력, 탄소포집, CCUS, 폐플라스틱, 재생에너지]

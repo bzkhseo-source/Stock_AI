@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% block title %}{{ q or '검색' }}{% endblock %}
+{% block content %}
+{% if not data %}
+<h1 class="mb-2 text-xl font-bold">키워드로 관련 종목 찾기</h1>
+<p class="mb-4 text-sm text-slate-600">테마 키워드나 종목명을 입력하세요. 유사어로 확장해 관련 테마와 종목을 찾습니다.</p>
+<div class="flex flex-wrap gap-2">
+  {% for k in ['HBM', '로봇', '원전', '변압기', '데이터센터', '방산', '조선', '비만치료제'] %}
+  <a href="/search?q={{ k }}" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm hover:border-indigo-300">{{ k }}</a>
+  {% endfor %}
+</div>
+{% else %}
+<h1 class="text-xl font-bold">‘{{ q }}’ 관련 종목</h1>
+<section class="my-4 space-y-3">
+  <div>
+    <p class="mb-1 text-xs font-semibold text-slate-500">확장 키워드</p>
+    <div class="flex flex-wrap gap-1.5">
+      {% for k in data.expanded %}<a href="/search?q={{ k }}" class="rounded-full bg-white px-2.5 py-1 text-xs ring-1 ring-slate-200 hover:ring-indigo-300">{{ k }}</a>{% endfor %}
+    </div>
+  </div>
+  {% if data.themes %}
+  <div>
+    <p class="mb-1 text-xs font-semibold text-slate-500">관련 테마</p>
+    <div class="flex flex-wrap gap-2">
+      {% for t in data.themes %}
+      <a href="/theme/{{ t.id }}" class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:border-indigo-300">
+        <span class="font-semibold">{{ t.name }}</span>{{ ui.trend_badge(t.trend) }}
+        <span class="num text-xs {{ t.ret_1d|updown }}">{{ t.ret_1d|pct }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <p class="rounded-lg bg-white p-3 text-sm text-slate-600 ring-1 ring-slate-200">일치하는 테마가 없어 종목명으로만 찾았습니다. 테마 사전(data/themes.yaml)에 키워드를 추가할 수 있습니다.</p>
+  {% endif %}
+</section>
+
+<div class="mb-3 flex gap-1 border-b border-slate-200 text-sm">
+  <span class="border-b-2 border-slate-900 px-3 py-2 font-semibold">국내 관련주 <span class="num text-slate-500">{{ data.rows|length }}</span></span>
+  <span class="px-3 py-2 text-slate-400" title="Phase 2에서 제공">해외 관련주 · 준비 중</span>
+</div>
+{% include "partials/stock_table.html" %}
+{% endif %}
+{% endblock %}

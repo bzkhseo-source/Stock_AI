@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}로그인{% endblock %}
+{% block content %}
+<div class="mx-auto mt-10 max-w-sm rounded-2xl border border-slate-200 bg-white p-6">
+  <h1 class="text-xl font-bold">{{ APP_NAME }} 비공개 베타</h1>
+  <p class="mt-1 text-sm text-slate-600">초대받은 분만 이용할 수 있습니다. 베타 기간에는 모든 기능이 무료입니다.</p>
+  <form method="post" action="/login" class="mt-5 space-y-3">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="block text-sm"><span class="text-slate-700">이메일</span>
+      <input name="email" type="email" required class="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"></label>
+    <label class="block text-sm"><span class="text-slate-700">초대 코드</span>
+      <input name="code" required class="mt-1 w-full rounded-md border border-slate-200 px-3 py-2"></label>
+    {% if error %}<p class="text-sm text-rose-600">{{ error }}</p>{% endif %}
+    <button class="w-full rounded-md bg-slate-900 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">시작하기</button>
+  </form>
+  <p class="mt-4 text-xs leading-relaxed text-slate-500">수집 항목: 이메일, 이용 기록(화면 조회·기능 사용), 보내주신 의견. 목적: 베타 사용성 평가. 탈퇴를 요청하시면 삭제합니다.</p>
+</div>
+{% endblock %}

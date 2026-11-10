@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% block title %}시장 대시보드{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-end justify-between gap-2">
+  <div>
+    <h1 class="text-xl font-bold">오늘 시장은 왜 움직였을까</h1>
+    {{ ui.meta_line(day=day, source="pykrx · FinanceDataReader · yfinance · DART · Google 뉴스 RSS" if not demo else "데모 데이터") }}
+  </div>
+</div>
+
+<!-- 지수 -->
+<section class="mb-6">
+  <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+    {% for i in kr + glob %}
+    <div class="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+      <p class="truncate text-xs text-slate-500">{{ i.name }}</p>
+      <p class="num text-base font-semibold">{{ i.close|num(2) }}</p>
+      <p class="num text-xs font-semibold {{ i.change_pct|updown }}">{{ i.change_pct|pct(2) }} <span class="font-normal text-slate-400">{{ i.day.strftime('%m/%d') }}</span></p>
+    </div>
+    {% else %}
+    <p class="col-span-full text-sm text-slate-500">지수 데이터 없음</p>
+    {% endfor %}
+  </div>
+  <p class="mt-1 text-[11px] text-slate-400">해외 지수 날짜는 현지 거래일 기준입니다.</p>
+</section>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <!-- 왜 움직였지 -->
+  <section class="min-w-0 lg:col-span-2">
+    <h2 class="mb-2 flex items-center gap-2 text-base font-bold">왜 움직였지? <span class="text-xs font-normal text-slate-500">±10% 이상 또는 거래량 3배 이상</span></h2>
+    <div class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+      {% for e, st in moves %}
+      <a href="/stock/{{ st.code }}" class="block px-4 py-3 hover:bg-slate-50">
+        <div class="flex flex-wrap items-baseline justify-between gap-x-2">
+          <p class="min-w-0 font-semibold">{{ st.name }} <span class="text-xs font-normal text-slate-400">{{ st.code }} · {{ st.market }}</span></p>
+          <p class="num shrink-0 text-sm font-bold {{ e.change_pct|updown }}">{{ e.change_pct|pct }}{% if e.volume_ratio %} <span class="font-normal text-slate-500">· 거래량 {{ e.volume_ratio|ratio }}</span>{% endif %}</p>
+        </div>
+        {% if e.unexplained %}
+        <p class="mt-1 text-sm font-semibold text-rose-700">⚠ 원인 불명 — 관련 공시·뉴스를 찾지 못했습니다. 추격매수에 주의하세요.</p>
+        {% for c in e.candidates %}<p class="mt-0.5 text-sm text-slate-600">· [{{ c.type }}] {{ c.title }}</p>{% endfor %}
+        {% else %}
+        {% for c in e.candidates[:3] %}<p class="mt-0.5 truncate text-sm text-slate-600">· [{{ c.type }}] {{ c.title }}</p>{% endfor %}
+        {% endif %}
+        {% if e.ai_summary %}<p class="mt-1 text-sm text-slate-700">{{ ui.ai_label() }} {{ e.ai_summary }}</p>{% endif %}
+      </a>
+      {% else %}
+      <p class="px-4 py-6 text-sm text-slate-500">기준일에 조건을 만족한 종목이 없습니다.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- 거래량 급증 -->
+  <section class="min-w-0">
+    <h2 class="mb-2 text-base font-bold">거래량 급증 <span class="text-xs font-normal text-slate-500">20일 평균 대비</span></h2>
+    <div class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white text-sm">
+      {% for m, st in spikes %}
+      <a href="/stock/{{ st.code }}" class="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-slate-50">
+        <span class="truncate font-medium">{{ st.name }}</span>
+        <span class="num shrink-0"><span class="font-semibold">{{ m.volume_ratio|ratio }}</span> <span class="{{ m.ret_1d|updown }}">{{ m.ret_1d|pct }}</span></span>
+      </a>
+      {% else %}
+      <p class="px-4 py-6 text-slate-500">해당 종목 없음</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<!-- 테마 -->
+<div class="mt-6 grid gap-6 md:grid-cols-2">
+  {% for title, items in [('급상승 테마 TOP 10', up), ('급하락 테마 TOP 10', down)] %}
+  <section class="min-w-0">
+    <h2 class="mb-2 text-base font-bold">{{ title }} <span class="text-xs font-normal text-slate-500">구성 종목 1일 등락률 중앙값</span></h2>
+    <div class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white text-sm">
+      {% for t in items %}
+      <a href="/theme/{{ t.id }}" class="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-slate-50">
+        <span class="flex min-w-0 items-center gap-2"><span class="truncate font-medium">{{ t.name }}</span>{{ ui.trend_badge(t.trend) }}</span>
+        <span class="num shrink-0"><span class="font-semibold {{ t.ret_1d|updown }}">{{ t.ret_1d|pct }}</span> <span class="text-xs text-slate-400">5일 {{ t.ret_5d|pct }}</span></span>
+      </a>
+      {% else %}
+      <p class="px-4 py-6 text-slate-500">해당 테마 없음</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+<div class="mt-6 grid gap-6 md:grid-cols-3">
+  <!-- 관심 키워드 -->
+  <section>
+    <h2 class="mb-2 text-base font-bold">관심 키워드 <span class="text-xs font-normal text-slate-500">최근 7일 뉴스 수</span></h2>
+    <div class="flex flex-wrap gap-2">
+      {% for t in keywords %}
+      <a href="/search?q={{ t.keywords[0] }}" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm hover:border-indigo-300">{{ t.keywords[0] }} <span class="num text-xs text-slate-500">{{ t.news_7d }}</span></a>
+      {% else %}
+      <p class="text-sm text-slate-500">데이터 없음</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- 뉴스 -->
+  <section class="md:col-span-2">
+    <h2 class="mb-2 text-base font-bold">최신 뉴스 <span class="text-xs font-normal text-slate-500">같은 사건은 1건으로 묶음 · 제목과 링크만 제공</span></h2>
+    <ul class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white text-sm">
+      {% for n in news %}
+      <li class="px-4 py-2.5">
+        <a href="{{ n.url }}" target="_blank" rel="noopener" class="font-medium hover:underline">{{ n.title }}</a>
+        <p class="text-xs text-slate-500">{{ n.publisher or '언론사 미상' }} · 게시 {{ n.published_at.strftime('%m/%d %H:%M') if n.published_at else '시각 미상' }}</p>
+      </li>
+      {% else %}
+      <li class="px-4 py-6 text-slate-500">수집된 뉴스가 없습니다.</li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

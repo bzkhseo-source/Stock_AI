@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}{{ APP_NAME }}{% endblock %} · {{ APP_NAME }}</title>
+  <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/htmx.min.js"></script>
+  <style>
+    body { font-feature-settings: "tnum"; }
+    .num { font-variant-numeric: tabular-nums; }
+    details > summary { list-style: none; } details > summary::-webkit-details-marker { display: none; }
+    .htmx-request.htmx-indicator, .htmx-request .htmx-indicator { opacity: 1; }
+    .htmx-indicator { opacity: 0; transition: opacity .2s; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased pb-20 md:pb-0">
+  <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+      <a href="/" class="flex shrink-0 items-center gap-2">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-sm font-bold text-white">왜</span>
+        <span class="text-lg font-bold tracking-tight">{{ APP_NAME }}</span>
+        <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200">BETA</span>
+      </a>
+      <form action="/search" method="get" class="ml-auto flex w-full max-w-md items-center">
+        <label class="sr-only" for="q">키워드 또는 종목명</label>
+        <input id="q" name="q" value="{{ q or '' }}" placeholder="키워드·종목명 (예: HBM, 로봇)"
+               class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+      </form>
+      <nav class="hidden items-center gap-1 text-sm md:flex">
+        <a href="/" class="rounded-md px-3 py-2 {{ 'bg-slate-100 font-semibold' if page=='home' else 'text-slate-600 hover:bg-slate-100' }}">홈</a>
+        <a href="/about" class="rounded-md px-3 py-2 {{ 'bg-slate-100 font-semibold' if page=='about' else 'text-slate-600 hover:bg-slate-100' }}">기준·정보</a>
+        {% if user and not open_mode %}<a href="/logout" class="rounded-md px-3 py-2 text-slate-500 hover:bg-slate-100">로그아웃</a>{% endif %}
+      </nav>
+    </div>
+  </header>
+
+  {% if demo %}
+  <div class="border-b border-amber-200 bg-amber-50">
+    <p class="mx-auto max-w-6xl px-4 py-2 text-xs text-amber-900 sm:text-sm">
+      <strong>데모 데이터</strong> · 화면의 회사와 시세·공시·뉴스는 모두 가상입니다. 실제 데이터는 API 키를 넣고 <code class="rounded bg-amber-100 px-1">python -m jobs.run daily</code>를 실행하면 수집됩니다.
+    </p>
+  </div>
+  {% endif %}
+
+  <main class="mx-auto max-w-6xl px-4 py-5">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="mx-auto max-w-6xl px-4 pb-24 pt-4 text-xs leading-relaxed text-slate-500 md:pb-8">
+    <p class="border-t border-slate-200 pt-4">{{ DISCLAIMER }}</p>
+  </footer>
+
+  <!-- 모바일 하단 탭 -->
+  <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t border-slate-200 bg-white text-center text-xs md:hidden" style="padding-bottom: env(safe-area-inset-bottom)">
+    <a href="/" class="py-3 {{ 'font-semibold text-slate-900' if page=='home' else 'text-slate-500' }}">홈</a>
+    <a href="/search" class="py-3 {{ 'font-semibold text-slate-900' if page in ('search','stock','theme') else 'text-slate-500' }}">검색</a>
+    <a href="/about" class="py-3 {{ 'font-semibold text-slate-900' if page=='about' else 'text-slate-500' }}">기준·정보</a>
+  </nav>
+
+  <!-- 피드백 -->
+  {% if page != 'login' %}
+  <details class="fixed bottom-20 right-4 z-40 md:bottom-6">
+    <summary class="cursor-pointer rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-slate-800">의견<span class="hidden sm:inline"> 보내기</span></summary>
+    <form hx-post="/feedback" hx-target="#fb-result" class="absolute bottom-12 right-0 w-72 space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+      <input type="hidden" name="page" value="{{ request.url.path }}">
+      <p class="text-sm font-semibold">이 화면은 어떠셨나요?</p>
+      <div class="flex gap-1 text-sm">
+        {% for n in range(1, 6) %}
+        <label class="flex-1"><input type="radio" name="rating" value="{{ n }}" class="peer sr-only">
+          <span class="block cursor-pointer rounded-md border border-slate-200 py-1.5 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:font-semibold">{{ n }}</span></label>
+        {% endfor %}
+      </div>
+      <textarea name="comment" rows="3" placeholder="불편한 점, 원하는 기능" class="w-full rounded-md border border-slate-200 p-2 text-sm"></textarea>
+      <button class="w-full rounded-md bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-700">보내기</button>
+      <div id="fb-result"></div>
+    </form>
+  </details>
+  {% endif %}
+
+  <script>
+    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(() => {}); }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

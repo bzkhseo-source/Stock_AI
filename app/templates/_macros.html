@@ -1,0 +1,30 @@
+{% macro pro_badge() -%}
+<span class="ml-1 rounded bg-indigo-600 px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-wide text-white" title="정식 출시 후 프로 등급 기능 (베타 기간 무료)">PRO</span>
+{%- endmacro %}
+
+{% macro trend_badge(trend) -%}
+{% if trend %}<span class="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 {{ TREND_STYLE.get(trend, '') }}">{{ trend }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro relation_badge(rel) -%}
+{% if rel %}<span class="whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium ring-1 {{ RELATION_STYLE.get(rel, '') }}">{{ rel }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro risk_badges(flags, help=None) -%}
+{% for f in flags %}
+<span class="mb-0.5 inline-block whitespace-nowrap rounded bg-rose-50 px-1.5 py-0.5 text-[11px] font-medium text-rose-700 ring-1 ring-rose-200"
+      title="{{ f.evidence }}{% if help and help.get(f.kind) %} — {{ help[f.kind] }}{% endif %}">⚠ {{ f.kind }}</span>
+{% endfor %}
+{%- endmacro %}
+
+{% macro meta_line(sort_label=None, day=None, source=None) -%}
+<p class="text-xs text-slate-500">
+  {% if sort_label %}정렬 기준: <strong class="font-semibold text-slate-700">{{ sort_label }}</strong> · {% endif %}
+  기준 시점: <strong class="font-semibold text-slate-700">{{ day or '데이터 없음' }} 장 마감</strong> (지연 데이터)
+  {% if source %} · 출처: {{ source }}{% endif %}
+</p>
+{%- endmacro %}
+
+{% macro ai_label() -%}
+<span class="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">AI 해석</span>
+{%- endmacro %}

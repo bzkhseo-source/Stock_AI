@@ -1,0 +1,64 @@
+{% import "_macros.html" as ui %}
+<div id="stock-table">
+  <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+    {{ ui.meta_line(sort_label=data.sort_label, day=data.day, source="데모 데이터" if demo else "pykrx · DART") }}
+    <label class="flex items-center gap-2 text-sm">
+      <span class="text-slate-500">정렬</span>
+      <select name="sort" class="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
+              hx-get="{{ sort_base }}" hx-include="this" hx-target="#stock-table" hx-swap="outerHTML">
+        {% for key, (label, _, _) in sorts.items() %}
+        <option value="{{ key }}" {{ 'selected' if key == data.sort }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <table class="w-full min-w-[880px] text-sm">
+      <thead class="bg-slate-50 text-left text-xs text-slate-500">
+        <tr>
+          <th class="px-3 py-2 font-medium">종목</th>
+          <th class="px-3 py-2 text-right font-medium">현재가</th>
+          <th class="px-3 py-2 text-right font-medium">1일</th>
+          <th class="px-3 py-2 text-right font-medium">5일</th>
+          <th class="px-3 py-2 text-right font-medium">시가총액</th>
+          <th class="px-3 py-2 text-right font-medium">거래량<br><span class="font-normal">20일 평균 대비</span></th>
+          <th class="px-3 py-2 font-medium">연관성 · 노출도</th>
+          <th class="px-3 py-2 text-right font-medium">종합점수{{ ui.pro_badge() }}</th>
+          <th class="px-3 py-2 font-medium">리스크</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for r in data.rows %}
+        {% set m = r.m %}
+        <tr class="align-top hover:bg-slate-50">
+          <td class="px-3 py-2.5">
+            <a href="/stock/{{ r.stock.code }}" class="font-semibold hover:underline">{{ r.stock.name }}</a>
+            <p class="text-xs text-slate-400">{{ r.stock.code }} · {{ r.stock.market }}{% if r.stock.kind != '보통주' %} · <span class="font-semibold text-amber-700">{{ r.stock.kind }}</span>{% endif %}</p>
+          </td>
+          <td class="num px-3 py-2.5 text-right">{{ m.close|price }}</td>
+          <td class="num px-3 py-2.5 text-right font-semibold {{ m.ret_1d|updown }}">{{ m.ret_1d|pct }}</td>
+          <td class="num px-3 py-2.5 text-right {{ m.ret_5d|updown }}">{{ m.ret_5d|pct }}</td>
+          <td class="num px-3 py-2.5 text-right">{{ m.market_cap|krw_big }}</td>
+          <td class="num px-3 py-2.5 text-right">{{ m.volume|shares }}<p class="text-xs text-slate-500">{{ m.volume_ratio|ratio }}</p></td>
+          <td class="px-3 py-2.5">
+            {% if r.mem %}{{ ui.relation_badge(r.mem.relation) }}
+            <p class="num mt-0.5 text-xs text-slate-600">{% if r.exposure is not none %}노출도 <strong>{{ r.exposure|pct_plain }}</strong>{% else %}노출도 산출 불가{% endif %}</p>
+            {% else %}<span class="text-xs text-slate-400">종목명 검색 결과</span>{% endif %}
+          </td>
+          <td class="num px-3 py-2.5 text-right">
+            {% if can('F09_ai_score') %}
+              {% if r.sc and r.sc.total is not none %}<span class="font-bold">{{ r.sc.total|num(0) }}</span><p class="text-xs text-slate-500">{{ r.sc.grade }} · 충족 {{ r.sc.coverage|num(0) }}%</p>
+              {% elif r.sc %}<span class="text-xs text-slate-500">평가 불가<br>충족 {{ r.sc.coverage|num(0) }}%</span>
+              {% else %}<span class="text-slate-400">—</span>{% endif %}
+            {% else %}<span class="text-xs text-slate-400">프로 기능</span>{% endif %}
+          </td>
+          <td class="px-3 py-2.5">{{ ui.risk_badges(r.flags) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="px-3 py-8 text-center text-slate-500">결과가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-2 text-xs text-slate-500">종합점수는 수익률이나 상승 확률이 아닌 <strong>트렌드 적합도</strong>입니다. 테마 편입주는 뉴스에 함께 등장했을 뿐 사업 연관성이 검증되지 않은 종목입니다.</p>
+</div>

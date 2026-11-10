@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% block title %}{{ d.stock.name }}{% endblock %}
+{% block head %}
+<script src="/static/vendor/lightweight-charts.js"></script>
+{% endblock %}
+{% block content %}
+{% set s = d.stock %}{% set m = d.m %}
+<div class="mb-4">
+  <p class="text-xs text-slate-500"><a href="/" class="hover:underline">홈</a> › 종목</p>
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">{{ s.name }}</h1>
+      <p class="text-sm text-slate-500">{{ s.code }} · {{ s.market }} · {{ s.kind }}{% if s.status != '상장' %} · <strong class="text-rose-700">{{ s.status }}</strong>{% endif %}</p>
+    </div>
+    {% if m %}
+    <div class="text-right">
+      <p class="num text-2xl font-bold">{{ m.close|price(s.currency) }}</p>
+      <p class="num text-sm font-semibold {{ m.ret_1d|updown }}">{{ m.ret_1d|pct }} <span class="font-normal text-slate-500">· {{ d.day }} 장 마감 (지연)</span></p>
+    </div>
+    {% endif %}
+  </div>
+  {% if d.flags %}
+  <div class="mt-3 rounded-lg bg-rose-50 p-3 ring-1 ring-rose-200">
+    <p class="mb-1 text-sm font-semibold text-rose-800">리스크 확인</p>
+    <ul class="space-y-0.5 text-sm text-rose-900">
+      {% for f in d.flags %}<li>⚠ <strong>{{ f.kind }}</strong> — {{ risk_help.get(f.kind, '') }} <span class="text-xs text-rose-700">({{ f.since }} · {{ f.evidence.split(' (http')[0] }})</span></li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <!-- 차트 -->
+    <section class="rounded-xl border border-slate-200 bg-white p-3">
+      <div class="mb-2 flex items-center justify-between">
+        <h2 class="text-sm font-bold">주가·거래량 <span class="font-normal text-slate-500">최근 1년, 일봉</span></h2>
+      </div>
+      <div id="chart" class="h-72 w-full"></div>
+    </section>
+
+    <!-- 왜 올랐지 -->
+    <section>
+      <h2 class="mb-2 text-base font-bold">왜 움직였지?</h2>
+      {% for e in d.moves %}
+      <div class="mb-2 rounded-xl border border-slate-200 bg-white p-4">
+        <p class="text-sm"><strong>{{ e.day }}</strong> · <span class="num font-semibold {{ e.change_pct|updown }}">{{ e.change_pct|pct }}</span>{% if e.volume_ratio %} · 거래량 {{ e.volume_ratio|ratio }}{% endif %}</p>
+        {% if e.unexplained %}<p class="mt-1 text-sm font-semibold text-rose-700">⚠ 원인 불명 — 관련 공시·뉴스를 찾지 못했습니다.</p>{% endif %}
+        <ol class="mt-1 space-y-0.5 text-sm">
+          {% for c in e.candidates %}
+          <li>[{{ loop.index }}] <span class="text-xs text-slate-500">{{ c.type }} · {{ c.day }}</span> <a href="{{ c.url }}" {% if c.url.startswith('http') %}target="_blank" rel="noopener"{% endif %} class="hover:underline">{{ c.title }}</a></li>
+          {% endfor %}
+        </ol>
+        {% if e.ai_summary %}<p class="mt-2 rounded-md bg-violet-50 p-2 text-sm text-slate-700">{{ ui.ai_label() }} {{ e.ai_summary }}</p>{% endif %}
+      </div>
+      {% else %}
+      <p class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">최근 큰 변동(±10% 또는 거래량 3배)이 없었습니다.</p>
+      {% endfor %}
+    </section>
+
+    <!-- 테마·노출도 -->
+    <section>
+      <h2 class="mb-2 text-base font-bold">관련 테마와 노출도</h2>
+      {% for mem in d.members %}
+      {% set t = d.themes.get(mem.theme_id) %}{% set sc = d.scores.get(mem.theme_id) %}
+      <div class="mb-3 rounded-xl border border-slate-200 bg-white p-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <a href="/theme/{{ mem.theme_id }}" class="font-semibold hover:underline">{{ t.name if t else mem.theme_id }}</a>
+          {{ ui.relation_badge(mem.relation) }}
+          <span class="text-xs text-slate-500">근거: {{ mem.basis }}{% if mem.verified_at %} · {{ mem.verified_at }}{% endif %}</span>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-sm text-slate-600">테마 노출도</span>
+          {% if mem.exposure_pct is not none %}
+          <span class="num text-xl font-bold">{{ mem.exposure_pct|pct_plain }}</span>
+          <div class="h-2 flex-1 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-emerald-500" style="width: {{ [mem.exposure_pct, 100]|min }}%"></div></div>
+          {% else %}<span class="text-sm font-semibold text-slate-500">산출 불가</span>{% endif %}
+        </div>
+        {% if mem.evidence %}
+        <details class="mt-2 text-sm">
+          <summary class="cursor-pointer text-indigo-700">근거 보기{{ ui.pro_badge() if mem.exposure_pct is not none }}</summary>
+          {% if can('F04_exposure_detail') %}
+          <blockquote class="mt-1 border-l-2 border-slate-300 pl-3 text-slate-600">{{ mem.evidence }}</blockquote>
+          {% if mem.evidence_url %}<a href="{{ mem.evidence_url }}" target="_blank" rel="noopener" class="text-xs text-indigo-700 underline">원문 열기</a>{% endif %}
+          {% else %}<p class="mt-1 text-slate-500">프로 기능입니다.</p>{% endif %}
+        </details>
+        {% endif %}
+
+        {% if sc %}
+        <div class="mt-3 border-t border-slate-100 pt-3">
+          <p class="mb-2 text-sm font-semibold">AI 종합점수 {{ ui.pro_badge() }}
+            {% if can('F09_ai_score') %}
+            {% if sc.total is not none %}<span class="num ml-1 text-lg">{{ sc.total|num(0) }}</span><span class="text-slate-500"> / 100 · {{ sc.grade }}</span>
+            {% else %}<span class="ml-1 text-slate-500">평가 불가</span>{% endif %}
+            <span class="text-xs font-normal text-slate-500"> · 데이터 충족률 {{ sc.coverage|num(0) }}%</span>
+            {% endif %}
+          </p>
+          {% if can('F09_ai_score') %}
+          <div class="grid gap-1.5 sm:grid-cols-2">
+            {% for k, label in labels.items() %}{% set v = sc[k] %}
+            <div class="text-xs" title="{{ methods[k] }}">
+              <div class="flex justify-between"><span class="text-slate-600">{{ label }}</span><span class="num">{{ v|num(1) if v is not none else '데이터 없음' }} / {{ weights[k] }}</span></div>
+              <div class="mt-0.5 h-1.5 rounded-full bg-slate-100">{% if v is not none %}<div class="h-1.5 rounded-full bg-indigo-500" style="width: {{ (v / weights[k] * 100)|round(0) }}%"></div>{% endif %}</div>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="mt-2 text-xs text-slate-500">수익률이나 상승 확률이 아닌 트렌드 적합도입니다. 누락 항목은 만점 처리하지 않고 평가 가능한 항목만으로 환산합니다.</p>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">연결된 테마가 없습니다.</p>
+      {% endfor %}
+    </section>
+  </div>
+
+  <aside class="space-y-6">
+    <!-- 지표 -->
+    <section class="rounded-xl border border-slate-200 bg-white p-4">
+      <h2 class="mb-2 text-sm font-bold">시세·변동성</h2>
+      {% if m %}
+      <dl class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+        {% for label, val, cls in [('5일', m.ret_5d|pct, m.ret_5d|updown), ('1개월', m.ret_1m|pct, m.ret_1m|updown),
+                                   ('3개월', m.ret_3m|pct, m.ret_3m|updown), ('6개월', m.ret_6m|pct, m.ret_6m|updown),
+                                   ('1년', m.ret_1y|pct, m.ret_1y|updown), ('시가총액', m.market_cap|krw_big, ''),
+                                   ('거래량', m.volume|shares, ''), ('거래량 증가', m.volume_ratio|ratio, ''),
+                                   ('52주 최고', m.high_52w|price, ''), ('52주 최저', m.low_52w|price, '')] %}
+        <dt class="text-slate-500">{{ label }}</dt><dd class="num text-right font-medium {{ cls }}">{{ val }}</dd>
+        {% endfor %}
+      </dl>
+      <div class="mt-3 border-t border-slate-100 pt-3">
+        <p class="mb-1 text-xs font-semibold text-slate-600">변동성 상세 {{ ui.pro_badge() }}</p>
+        {% if can('F08_volatility_detail') %}
+        <dl class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+          <dt class="text-slate-500">일간 표준편차</dt><dd class="num text-right">{{ m.vol_daily|pct_plain(2) }}</dd>
+          <dt class="text-slate-500">연환산 변동성</dt><dd class="num text-right">{{ m.vol_annual|pct_plain }}</dd>
+          <dt class="text-slate-500">최대 낙폭(1년)</dt><dd class="num text-right text-blue-600">{{ m.mdd_1y|pct }}</dd>
+        </dl>
+        <p class="mt-1 text-[11px] text-slate-400">최근 60거래일 기준. 변동성은 상승 가능성이 아니라 가격이 흔들리는 정도입니다.</p>
+        {% endif %}
+      </div>
+      {% else %}<p class="text-sm text-slate-500">데이터 없음</p>{% endif %}
+    </section>
+
+    <!-- 재무 -->
+    <section class="rounded-xl border border-slate-200 bg-white p-4">
+      <h2 class="mb-2 text-sm font-bold">재무 <span class="font-normal text-slate-500">{{ d.fin.period ~ '년 사업보고서' if d.fin else '' }}</span></h2>
+      {% if d.fin %}{% set f = d.fin %}
+      <dl class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+        <dt class="text-slate-500">매출액</dt><dd class="num text-right">{{ f.revenue|krw_big }}</dd>
+        <dt class="text-slate-500">영업이익</dt><dd class="num text-right {{ f.operating_income|updown }}">{{ f.operating_income|krw_big }}</dd>
+        <dt class="text-slate-500">당기순이익</dt><dd class="num text-right">{{ f.net_income|krw_big }}</dd>
+        <dt class="text-slate-500">부채비율</dt><dd class="num text-right">{{ ((f.total_liabilities / f.total_equity * 100)|pct_plain(0)) if f.total_liabilities is not none and f.total_equity else NA }}</dd>
+      </dl>
+      <p class="mt-1 text-[11px] text-slate-400">출처: {{ f.source }}</p>
+      {% else %}<p class="text-sm text-slate-500">데이터 없음</p>{% endif %}
+    </section>
+
+    <!-- 공시 -->
+    <section class="rounded-xl border border-slate-200 bg-white p-4">
+      <h2 class="mb-2 text-sm font-bold">최근 공시 <span class="font-normal text-slate-500">60일</span></h2>
+      <ul class="space-y-1.5 text-sm">
+        {% for x in d.discl %}<li><span class="num text-xs text-slate-500">{{ x.filed_day }}</span> <a href="{{ x.url }}" target="_blank" rel="noopener" class="hover:underline">{{ x.title }}</a></li>
+        {% else %}<li class="text-slate-500">데이터 없음</li>{% endfor %}
+      </ul>
+    </section>
+
+    <!-- 뉴스 -->
+    <section class="rounded-xl border border-slate-200 bg-white p-4">
+      <h2 class="mb-2 text-sm font-bold">관련 뉴스</h2>
+      <ul class="space-y-2 text-sm">
+        {% for n in d.news %}<li><a href="{{ n.url }}" target="_blank" rel="noopener" class="hover:underline">{{ n.title }}</a>
+          <p class="text-xs text-slate-500">{{ n.publisher or '' }} · 게시 {{ n.published_at.strftime('%m/%d %H:%M') if n.published_at else '미상' }}</p></li>
+        {% else %}<li class="text-slate-500">데이터 없음</li>{% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    const data = {{ chart_json|safe }};
+    const el = document.getElementById('chart');
+    if (!window.LightweightCharts || !data.length) { el.innerHTML = '<p class="p-4 text-sm text-slate-500">차트 데이터 없음</p>'; return; }
+    const chart = LightweightCharts.createChart(el, {
+      autoSize: true, layout: { background: { color: '#fff' }, textColor: '#475569', fontFamily: 'Pretendard Variable, sans-serif' },
+      grid: { vertLines: { color: '#f1f5f9' }, horzLines: { color: '#f1f5f9' } },
+      rightPriceScale: { borderColor: '#e2e8f0' }, timeScale: { borderColor: '#e2e8f0' },
+      localization: { priceFormatter: p => Math.round(p).toLocaleString('ko-KR') },
+    });
+    const candles = chart.addCandlestickSeries({ upColor: '#e11d48', downColor: '#2563eb', borderVisible: false,
+      wickUpColor: '#e11d48', wickDownColor: '#2563eb' });
+    candles.setData(data.map(d => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close })));
+    const vol = chart.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
+    chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    vol.setData(data.map(d => ({ time: d.time, value: d.volume, color: d.close >= d.open ? '#fecdd3' : '#bfdbfe' })));
+    chart.timeScale().fitContent();
+  })();
+</script>
+{% endblock %}
