@@ -8,6 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from contextlib import asynccontextmanager  # noqa: E402
+
 from fastapi import FastAPI, Form, Request  # noqa: E402
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
@@ -24,7 +26,16 @@ from db.models import Feedback, JobRun, UsageEvent, User  # noqa: E402
 from db.session import init_db, session_scope  # noqa: E402
 
 APP_DIR = Path(__file__).resolve().parent
-app = FastAPI(title=settings.app_name, docs_url=None, redoc_url=None)
+settings.check_production()
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    init_db()
+    yield
+
+
+app = FastAPI(title=settings.app_name, docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 filters.register(templates.env)
@@ -33,11 +44,6 @@ templates.env.globals.update(DISCLAIMER=DISCLAIMER, APP_NAME=settings.app_name, 
 PUBLIC = ("/login", "/static", "/manifest.webmanifest", "/sw.js", "/healthz", "/offline")
 FEATURE_BY_PATH = {"/": "F01_dashboard", "/search": "F02_search", "/stock": "F07_stock_detail",
                    "/theme": "F03_ranking", "/about": None}
-
-
-@app.on_event("startup")
-def _startup():
-    init_db()
 
 
 def current_user(request: Request) -> dict | None:
@@ -196,7 +202,8 @@ def offline(request: Request):
 
 
 # 세션 미들웨어는 마지막에 추가해야 가장 바깥에서 실행되어 gate_and_log가 세션을 읽을 수 있다.
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, max_age=60 * 60 * 24 * 30, same_site="lax")
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, max_age=60 * 60 * 24 * 30, same_site="lax",
+                   https_only=settings.is_production)
 
 
 @app.get("/healthz")

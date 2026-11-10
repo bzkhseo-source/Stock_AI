@@ -1,0 +1,11 @@
+# 웹 서버 전용 (Render). 수집·분석 배치는 requirements.txt 사용.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+jinja2>=3.1
+python-multipart>=0.0.9
+itsdangerous>=2.2
+sqlalchemy>=2.0
+psycopg[binary]>=3.2
+pyyaml>=6.0
+python-dotenv>=1.0
+httpx>=0.27
