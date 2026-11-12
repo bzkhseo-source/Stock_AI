@@ -26,12 +26,13 @@ from db.models import Feedback, JobRun, UsageEvent, User  # noqa: E402
 from db.session import init_db, session_scope  # noqa: E402
 
 APP_DIR = Path(__file__).resolve().parent
-settings.check_production()
+SETUP_PROBLEMS = settings.production_problems()
 
 
 @asynccontextmanager
 async def lifespan(_app):
-    init_db()
+    if not SETUP_PROBLEMS:
+        init_db()
     yield
 
 
@@ -58,6 +59,17 @@ def open_mode() -> bool:
 @app.middleware("http")
 async def gate_and_log(request: Request, call_next):
     path = request.url.path
+    if SETUP_PROBLEMS and path != "/healthz" and not path.startswith("/static"):
+        # 운영 설정이 빠지면 누구나 들어오는 대신, 무엇이 빠졌는지만 알려주고 막는다
+        items = "".join(f"<li>{p}</li>" for p in SETUP_PROBLEMS)
+        return HTMLResponse(
+            '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1"><title>설정 필요 · 왜올랐지</title>'
+            '<style>body{font-family:system-ui,sans-serif;max-width:560px;margin:10vh auto;padding:0 20px;color:#0f172a}'
+            'li{margin:6px 0}code{background:#f1f5f9;padding:1px 5px;border-radius:4px}</style></head><body>'
+            '<h1>서버 설정이 필요합니다</h1><p>비공개 베타 서버라서 아래 환경 변수가 있어야 열립니다.</p>'
+            f'<ul>{items}</ul><p>배포 서비스의 환경 변수에 추가한 뒤 다시 배포(Redeploy)하세요.</p></body></html>',
+            status_code=503)
     if not path.startswith(PUBLIC) and not open_mode() and not request.session.get("user"):
         if request.headers.get("HX-Request"):
             return HTMLResponse("", headers={"HX-Redirect": "/login"})

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -131,6 +132,11 @@ def cmd_demo(args):
 
 
 def main():
+    from config import settings
+    if os.getenv("GITHUB_ACTIONS") and settings.is_sqlite:
+        print("✘ DATABASE_URL이 비어 있습니다. GitHub 저장소 Settings → Secrets and variables → Actions 에 "
+              "DATABASE_URL(Neon 연결 문자열)을 등록하세요.")
+        sys.exit(1)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     p = argparse.ArgumentParser(description="왜올랐지 배치 작업")
     sub = p.add_subparsers(dest="cmd", required=True)

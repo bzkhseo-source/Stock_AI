@@ -19,8 +19,10 @@ def _list(name: str) -> list[str]:
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "왜올랐지"
-    app_env: str = os.getenv("APP_ENV", "development")  # 배포 서버에서는 production
-    database_url: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'app.db'}")
+    # 배포 서버에서는 production. Vercel·Render는 자동으로 production 취급 (APP_ENV=development로만 해제)
+    app_env: str = os.getenv("APP_ENV") or ("production" if os.getenv("VERCEL") or os.getenv("RENDER") else "development")
+    # 빈 문자열(예: 등록 안 된 GitHub Secret)도 '없음'으로 본다
+    database_url: str = os.getenv("DATABASE_URL", "").strip() or f"sqlite:///{BASE_DIR / 'data' / 'app.db'}"
     secret_key: str = os.getenv("SECRET_KEY", "dev-only-change-me")
     invite_codes: list[str] = field(default_factory=lambda: _list("INVITE_CODES"))
     # 외부 API
@@ -40,19 +42,18 @@ class Settings:
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
 
-    def check_production(self) -> None:
-        """운영 서버가 로그인 없이 열리거나 기본 세션 키로 실행되는 것을 막는다."""
+    def production_problems(self) -> list[str]:
+        """운영 서버에 빠진 설정 목록 (값은 노출하지 않음)."""
         if not self.is_production:
-            return
+            return []
         problems = []
         if not self.invite_codes:
-            problems.append("INVITE_CODES (초대 코드)")
+            problems.append("INVITE_CODES (베타 초대 코드)")
         if self.secret_key in ("", "dev-only-change-me") or len(self.secret_key) < 32:
             problems.append("SECRET_KEY (32자 이상 무작위 문자열)")
         if self.is_sqlite:
-            problems.append("DATABASE_URL (Neon PostgreSQL)")
-        if problems:
-            raise RuntimeError("운영 모드에 필요한 환경 변수가 없습니다: " + ", ".join(problems))
+            problems.append("DATABASE_URL (Neon PostgreSQL 연결 문자열)")
+        return problems
 
     @property
     def is_sqlite(self) -> bool:

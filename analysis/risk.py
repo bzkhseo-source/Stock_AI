@@ -71,3 +71,18 @@ def active_flags(s, code: str, as_of: date, days: int = 30) -> list[RiskFlag]:
             continue
         out.setdefault(f.kind, f)
     return list(out.values())
+
+
+def active_flags_many(s, codes: list[str], as_of: date, days: int = 30) -> dict[str, list[RiskFlag]]:
+    """여러 종목의 플래그를 한 번의 질의로 가져온다 (화면 속도용). 규칙은 active_flags와 같다."""
+    price_kinds = {"단기 급등", "저유동성", "원인 불명 급등락"}
+    out: dict[str, dict[str, RiskFlag]] = {c: {} for c in codes}
+    if not codes:
+        return {}
+    q = select(RiskFlag).where(RiskFlag.code.in_(codes), RiskFlag.since >= as_of - timedelta(days=days)) \
+        .order_by(RiskFlag.since.desc())
+    for f in s.scalars(q):
+        if f.kind in price_kinds and f.since != as_of:
+            continue
+        out[f.code].setdefault(f.kind, f)
+    return {c: list(v.values()) for c, v in out.items()}

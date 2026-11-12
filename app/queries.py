@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 from sqlalchemy import func, select
 
-from analysis.risk import active_flags
+from analysis.risk import active_flags, active_flags_many
 from analysis.themes import expand_keyword, stock_search
 from db.models import (Disclosure, Financial, IndexDaily, JobRun, MetricDaily, MoveExplanation, News, NewsStock,
                        PriceDaily, Score, Stock, Theme, ThemeMember)
@@ -31,17 +31,25 @@ def as_of_day(s) -> date | None:
     return s.scalar(select(func.max(MetricDaily.day)))
 
 
+_DEMO_CACHE: dict[str, bool] = {}
+
+
 def is_demo(s) -> bool:
-    return s.scalar(select(func.count()).select_from(Stock).where(Stock.source == "DEMO")) > 0
+    """데모 데이터 여부. 서버 프로세스당 한 번만 조회한다."""
+    if "v" not in _DEMO_CACHE:
+        _DEMO_CACHE["v"] = s.scalar(select(func.count()).select_from(Stock).where(Stock.source == "DEMO")) > 0
+    return _DEMO_CACHE["v"]
 
 
 def latest_indices(s, symbols: list[str]) -> list[IndexDaily]:
-    out = []
-    for sym in symbols:
-        row = s.scalar(select(IndexDaily).where(IndexDaily.symbol == sym).order_by(IndexDaily.day.desc()).limit(1))
-        if row:
-            out.append(row)
-    return out
+    """지수별 최신 1건. 한 번의 질의로 최근 3주치를 가져와 지수마다 가장 최근 것을 고른다."""
+    since = date.today() - timedelta(days=21)
+    latest: dict[str, IndexDaily] = {}
+    for row in s.scalars(select(IndexDaily).where(IndexDaily.symbol.in_(symbols), IndexDaily.day >= since)):
+        cur = latest.get(row.symbol)
+        if cur is None or row.day > cur.day:
+            latest[row.symbol] = row
+    return [latest[sym] for sym in symbols if sym in latest]
 
 
 def dashboard(s) -> dict:
@@ -74,18 +82,32 @@ def dashboard(s) -> dict:
                 runs=list(s.scalars(select(JobRun).order_by(JobRun.id.desc()).limit(8))))
 
 
+def _by_key(s, model, key_cols, rows_filter):
+    return {tuple(getattr(r, c) for c in key_cols): r for r in s.scalars(select(model).where(*rows_filter))}
+
+
 def member_rows(s, members: list[ThemeMember], day: date | None) -> list[dict]:
+    """테마 구성 종목 표. 종목마다 따로 묻지 않고 종목·지표·점수·리스크를 각각 한 번에 가져온다."""
+    if not members or not day:
+        return []
+    codes = sorted({m.code for m in members})
+    theme_ids = sorted({m.theme_id for m in members})
+    stocks = {st.code: st for st in s.scalars(select(Stock).where(Stock.code.in_(codes)))}
+    metrics = {m.code: m for m in s.scalars(select(MetricDaily).where(MetricDaily.day == day,
+                                                                       MetricDaily.code.in_(codes)))}
+    scores = _by_key(s, Score, ("code", "theme_id"),
+                     (Score.day == day, Score.code.in_(codes), Score.theme_id.in_(theme_ids)))
+    flags = active_flags_many(s, [c for c in codes if c in metrics], day)
     rows = {}
     for mem in members:
-        stock = s.get(Stock, mem.code)
-        m = s.get(MetricDaily, (mem.code, day)) if day else None
+        stock, m = stocks.get(mem.code), metrics.get(mem.code)
         if stock is None or m is None:
             continue
-        sc = s.get(Score, (mem.code, mem.theme_id, day))
+        sc = scores.get((mem.code, mem.theme_id))
         r = rows.get(mem.code)
         if r is None or (sc and sc.total is not None and (r["score"] is None or sc.total > r["score"])):
             rows[mem.code] = dict(stock=stock, m=m, mem=mem, sc=sc, score=sc.total if sc else None,
-                                  exposure=mem.exposure_pct, flags=active_flags(s, mem.code, day))
+                                  exposure=mem.exposure_pct, flags=flags.get(mem.code, []))
     return list(rows.values())
 
 
@@ -103,13 +125,15 @@ def search(s, q: str, sort: str) -> dict:
     direct = stock_search(s, q)
     rows = member_rows(s, members, day)
     have = {r["stock"].code for r in rows}
-    for st in direct:  # 종목명으로 직접 찾은 결과
-        if st.code in have:
-            continue
-        m = s.get(MetricDaily, (st.code, day)) if day else None
-        if m:
-            rows.append(dict(stock=st, m=m, mem=None, sc=None, score=None, exposure=None,
-                             flags=active_flags(s, st.code, day)))
+    extra = [st for st in direct if st.code not in have]  # 종목명으로 직접 찾은 결과
+    if extra and day:
+        ms = {m.code: m for m in s.scalars(select(MetricDaily).where(
+            MetricDaily.day == day, MetricDaily.code.in_([st.code for st in extra])))}
+        fl = active_flags_many(s, list(ms), day)
+        for st in extra:
+            if st.code in ms:
+                rows.append(dict(stock=st, m=ms[st.code], mem=None, sc=None, score=None, exposure=None,
+                                 flags=fl.get(st.code, [])))
     return dict(day=day, themes=themes, expanded=expanded, rows=sort_rows(rows, sort), sort=sort,
                 sort_label=SORTS.get(sort, SORTS["score"])[0])
 
