@@ -15,6 +15,9 @@ on:
         default: daily
         type: choice
         options: [daily, backfill, news, analyze, verify]
+concurrency:
+  group: batch
+  cancel-in-progress: false
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -26,6 +29,7 @@ jobs:
       KRX_PW: ${{ secrets.KRX_PW }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       TZ: Asia/Seoul
+      PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
