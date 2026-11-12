@@ -13,11 +13,12 @@ on:
       command:
         description: "실행할 명령 (daily / news / analyze / verify / backfill)"
         default: daily
-
+        type: choice
+        options: [daily, backfill, news, analyze, verify]
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 120
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DART_API_KEY: ${{ secrets.DART_API_KEY }}
