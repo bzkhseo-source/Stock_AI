@@ -53,6 +53,10 @@ def upsert(session, model, rows: list[dict], keys: list[str]) -> int:
         return 0
     ins = sqlite_insert if settings.is_sqlite else pg_insert
     cols = {c.name for c in model.__table__.columns}
+    dedup: dict = {}
+    for r in rows:  # 같은 키가 두 번 들어오면 PostgreSQL이 거부하므로 마지막 것만 남긴다
+        dedup[tuple(r.get(k) for k in keys)] = r
+    rows = list(dedup.values())
     total = 0
     for i in range(0, len(rows), 500):
         chunk = [{k: v for k, v in r.items() if k in cols} for r in rows[i:i + 500]]

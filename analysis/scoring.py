@@ -82,6 +82,12 @@ def compute_scores(as_of: date) -> int:
     with session_scope() as s:
         has_news = (s.scalar(select(func.count(News.id))) or 0) > 0
         week_ago = datetime.combine(as_of, datetime.min.time()) - timedelta(days=7)
+        news_counts = dict(s.execute(select(NewsStock.code, func.count()).join(News, News.id == NewsStock.news_id)
+                                     .where(News.published_at >= week_ago).group_by(NewsStock.code)).all())
+        latest_fin: dict[str, Financial] = {}
+        for f in s.scalars(select(Financial)):
+            if f.code not in latest_fin or f.period > latest_fin[f.code].period:
+                latest_fin[f.code] = f
         for t in s.scalars(select(Theme)):
             members = list(s.scalars(select(ThemeMember).where(ThemeMember.theme_id == t.id)))
             if not members:
@@ -104,11 +110,8 @@ def compute_scores(as_of: date) -> int:
                     continue
                 p_mom = percentile(mom(m), mom_pop)
                 p_vol = percentile(m.volume_ratio, vol_pop)
-                news_n = None
-                if has_news:
-                    news_n = s.scalar(select(func.count()).select_from(NewsStock).join(News, News.id == NewsStock.news_id)
-                                      .where(NewsStock.code == mem.code, News.published_at >= week_ago)) or 0
-                fin = s.scalar(select(Financial).where(Financial.code == mem.code).order_by(Financial.period.desc()).limit(1))
+                news_n = news_counts.get(mem.code, 0) if has_news else None
+                fin = latest_fin.get(mem.code)
                 parts = {
                     "momentum": None if p_mom is None else round(p_mom * 20, 1),
                     "volume": None if p_vol is None else round(p_vol * 15, 1),

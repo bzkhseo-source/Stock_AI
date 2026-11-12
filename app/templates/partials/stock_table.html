@@ -12,6 +12,11 @@
       </select>
     </label>
   </div>
+  {% if data.sort_empty %}
+  <p class="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">
+    ‘{{ data.sort_label }}’ 기준 값이 아직 없어 순서를 바꿀 수 없습니다. 과거 시세가 쌓이면(1일 등락률은 2거래일, 5일은 6거래일 이상) 정렬됩니다.
+  </p>
+  {% endif %}
   <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
     <table class="w-full min-w-[880px] text-sm">
       <thead class="bg-slate-50 text-left text-xs text-slate-500">

@@ -45,11 +45,11 @@ def detect(as_of: date, lookback_days: int = 30) -> int:
                 if any(w in d.title.replace(" ", "") for w in words):
                     rows.append(dict(code=d.code, kind=kind, since=d.filed_day, evidence=f"{d.title} ({d.url})"[:300]))
                     break
+        foreign = set(s.scalars(select(Stock.code).where(Stock.country != "KR")))  # 한 번에 조회
         for m in s.scalars(select(MetricDaily).where(MetricDaily.day == as_of)):
-            stock = s.get(Stock, m.code)
             if m.ret_5d is not None and m.ret_5d >= settings.surge_5d_pct:
                 rows.append(dict(code=m.code, kind="단기 급등", since=as_of, evidence=f"5일 수익률 {m.ret_5d:+.1f}%"))
-            if (stock is None or stock.country == "KR") and m.avg_value_20d is not None \
+            if m.code not in foreign and m.avg_value_20d is not None \
                     and m.avg_value_20d < settings.low_liquidity_krw:
                 rows.append(dict(code=m.code, kind="저유동성", since=as_of,
                                  evidence=f"20일 평균 거래대금 {m.avg_value_20d / 1e8:.1f}억 원"))

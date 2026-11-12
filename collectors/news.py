@@ -21,7 +21,10 @@ from sqlalchemy import select
 from collectors.common import job_run
 from config import settings
 from db.models import News, NewsStock, Stock
-from db.session import session_scope
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+from db.session import session_scope, upsert
 
 log = logging.getLogger("news")
 FEED = "https://news.google.com/rss/search?q={q}&hl=ko&gl=KR&ceid=KR:ko"
@@ -83,17 +86,23 @@ def fetch_feed(query: str, days: int = 7) -> list[dict]:
 _GENERIC = {"대상", "동방", "서울", "한국", "세방", "신세계", "삼성", "현대", "LG", "SK", "GS", "KT"}
 
 
-def link_stocks(session, news_rows: list[News]) -> int:
+def link_stocks(session, news_rows: list[News], names: dict[str, str] | None = None) -> int:
     """뉴스 제목에 종목명이 등장하면 연결. 짧거나 흔한 이름은 오탐이 많아 제외."""
-    names = {s.name: s.code for s in session.scalars(select(Stock).where(Stock.country == "KR", Stock.kind == "보통주"))
-             if len(s.name) >= 3 and s.name not in _GENERIC}
-    n = 0
+    if names is None:
+        names = stock_names(session)
+    pairs = set()
     for row in news_rows:
         for name, code in names.items():
-            if name_in_title(name, row.title):
-                session.merge(NewsStock(news_id=row.id, code=code))
-                n += 1
-    return n
+            if name in row.title and name_in_title(name, row.title):  # 빠른 포함 검사 후 경계 검사
+                pairs.add((row.id, code))
+    if pairs:
+        upsert(session, NewsStock, [dict(news_id=i, code=c) for i, c in pairs], ["news_id", "code"])
+    return len(pairs)
+
+
+def stock_names(session) -> dict[str, str]:
+    return {s.name: s.code for s in session.scalars(select(Stock).where(Stock.country == "KR", Stock.kind == "보통주"))
+            if len(s.name) >= 3 and s.name not in _GENERIC}
 
 
 def name_in_title(name: str, title: str) -> bool:
@@ -104,28 +113,33 @@ def name_in_title(name: str, title: str) -> bool:
 def collect_news(queries: list[str]) -> int:
     with job_run("news") as st:
         saved = 0
+        with session_scope() as s:
+            names = stock_names(s)
         for q in queries[: settings.news_queries_per_run]:
             try:
                 items = fetch_feed(q)
             except Exception as e:
                 log.warning("뉴스 수집 실패 '%s': %s", q, e)
                 continue
+            rows = []
+            for it in items:
+                if not it["url"] or len(it["url"]) > 600:
+                    continue
+                it["title"] = it["title"][:400]
+                it["publisher"] = (it["publisher"] or "")[:100] or None
+                it["query"] = (it["query"] or "")[:100]
+                rows.append(it)
+            if not rows:
+                continue
             with session_scope() as s:
-                existing = set(s.scalars(select(News.url).where(News.url.in_([i["url"] for i in items]))))
-                new_rows = []
-                for it in items:
-                    if it["url"] in existing or not it["url"] or len(it["url"]) > 600:
-                        continue
-                    it["title"] = it["title"][:400]
-                    it["publisher"] = (it["publisher"] or "")[:100] or None
-                    it["query"] = (it["query"] or "")[:100]
-                    row = News(**it)
-                    s.add(row)
-                    new_rows.append(row)
-                    existing.add(it["url"])
-                s.flush()
-                link_stocks(s, new_rows)
-                saved += len(new_rows)
+                ins = sqlite_insert if settings.is_sqlite else pg_insert
+                # 이미 있는 기사(다른 배치가 먼저 저장한 것 포함)는 건너뛴다
+                stmt = ins(News).values(rows).on_conflict_do_nothing(index_elements=["url"]).returning(News.id)
+                new_ids = list(s.scalars(stmt))
+                if new_ids:
+                    new_rows = list(s.scalars(select(News).where(News.id.in_(new_ids))))
+                    link_stocks(s, new_rows, names)
+                saved += len(new_ids)
             time.sleep(2)  # 질의 간 간격
         st["rows"] = saved
         return saved

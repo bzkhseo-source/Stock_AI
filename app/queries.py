@@ -111,6 +111,12 @@ def member_rows(s, members: list[ThemeMember], day: date | None) -> list[dict]:
     return list(rows.values())
 
 
+def sort_empty(rows: list[dict], key: str) -> bool:
+    """선택한 정렬 기준의 값이 모든 종목에서 비어 있는지 (예: 하루치 시세만 있어 등락률이 없을 때)."""
+    fn = SORTS.get(key, SORTS["score"])[1]
+    return bool(rows) and all(fn(r) is None for r in rows)
+
+
 def sort_rows(rows: list[dict], key: str) -> list[dict]:
     label, fn, desc = SORTS.get(key, SORTS["score"])
     have = [r for r in rows if fn(r) is not None]
@@ -135,7 +141,7 @@ def search(s, q: str, sort: str) -> dict:
                 rows.append(dict(stock=st, m=ms[st.code], mem=None, sc=None, score=None, exposure=None,
                                  flags=fl.get(st.code, [])))
     return dict(day=day, themes=themes, expanded=expanded, rows=sort_rows(rows, sort), sort=sort,
-                sort_label=SORTS.get(sort, SORTS["score"])[0])
+                sort_label=SORTS.get(sort, SORTS["score"])[0], sort_empty=sort_empty(rows, sort))
 
 
 def stock_detail(s, code: str) -> dict | None:
@@ -167,5 +173,6 @@ def theme_detail(s, theme_id: str, sort: str) -> dict | None:
         return None
     day = as_of_day(s)
     members = list(s.scalars(select(ThemeMember).where(ThemeMember.theme_id == theme_id)))
-    return dict(theme=t, day=day, rows=sort_rows(member_rows(s, members, day), sort), sort=sort,
-                sort_label=SORTS.get(sort, SORTS["score"])[0])
+    rows = member_rows(s, members, day)
+    return dict(theme=t, day=day, rows=sort_rows(rows, sort), sort=sort,
+                sort_label=SORTS.get(sort, SORTS["score"])[0], sort_empty=sort_empty(rows, sort))
